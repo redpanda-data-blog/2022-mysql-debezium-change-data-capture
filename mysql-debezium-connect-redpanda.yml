@@ -1,0 +1,68 @@
+version: "3.8"
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=redpanda
+      - MYSQL_USER=redpanda
+      - MYSQL_PASSWORD=redpanda
+    ports:
+      - '3306:3306'
+    volumes:
+      - db:/var/lib/mysql
+      - ./mysql-scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  redpanda:
+    image: vectorized/redpanda
+    container_name: redpanda
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - "1"
+      - --memory
+      - "1G"
+      - --reserve-memory
+      - "0M"
+      - --node-id
+      - "0"
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:29092,OUTSIDE://redpanda:9092
+      - --check=false
+
+  kafka-connect:
+    image: debezium/connect:1.9
+    container_name: kafka-connect-debezium-mysql
+    depends_on:
+      - redpanda
+      - mysql
+    restart: always
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: "redpanda:9092"
+      REST_ADVERTISED_HOST_NAME: kafka-connect-rest
+      GROUP_ID: "mysql-deb-kc-rp"
+      CONFIG_STORAGE_TOPIC: "redpanda.configs"
+      OFFSET_STORAGE_TOPIC: "redpanda.offset"
+      STATUS_STORAGE_TOPIC: "redpanda.status"
+      CONFIG_STORAGE_REPLICATION_FACTOR: "1"
+      OFFSET_STORAGE_REPLICATION_FACTOR: "1"
+      STATUS_STORAGE_REPLICATION_FACTOR: "1"
+      KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      PLUGIN_PATH: /data/connect-jars
+    volumes:
+      - ./data:/data/connect-jars
+
+volumes:
+  db:
+    driver: local
