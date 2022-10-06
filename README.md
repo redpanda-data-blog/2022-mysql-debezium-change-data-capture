@@ -4,7 +4,7 @@ Learn how to connect MySQL and Debezium for real-time change data capture use ca
 
 Follow along with [this tutorial on the Redpanda blog](https://redpanda.com/blog/change-data-capture-mysql-debezium) to put this demo into action. 
 
-—-------
+---------------------
 
 ## About Redpanda 
 
